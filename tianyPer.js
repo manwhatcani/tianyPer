@@ -2,18 +2,42 @@ mc.listen("onServerStarted", () => {
   initCommand();
 });
 
-mc.listen("onPlayerDie",(player,source)=>{
-  if(player.isSimulatedPlayer()){
+mc.listen("onPlayerDie", (player, source) => {
+  if (player.isSimulatedPlayer()) {
     player.simulateRespawn();
-    player.talkAs(`我在${player.pos} 重生了，这一世，我必将拿回我的一切`)
+    const pos = player.getRespawnPosition(); //获取重生坐标
+    player.talkAs(`我在${pos} 重生了，这一世，我必将拿回我的一切`);
   }
-})
-
-mc.listen("onUseItemOn", (player, item, block, side, pos) => {
-  itemCommand(player, item, block, side, pos);
 });
 
-function itemCommand(player, item, block, side, pos) {}
+//处理win10右键防抖
+let debounceTimeout;
+let fanFlag = false;
+
+function debounce(func, wait) {
+  return function (...args) {
+    if (!debounceTimeout) {
+      func.apply(this, args);
+      debounceTimeout = setTimeout(() => {
+        debounceTimeout = null;
+      }, wait);
+    }
+  };
+}
+const debouncedItemCommand = debounce(itemCommand, 1000); // 1秒的防抖时间
+
+mc.listen("onUseItemOn", (player, item, block, side, pos) => {
+  if (fanFlag) {
+    debouncedItemCommand(player, item, block, side, pos);
+  }
+});
+
+function itemCommand(player, item, block, side, pos) {
+  if (item?.name.includes("cactus")) {
+    //TODO:没找到旋转的接口，要删除重建？
+  }
+  return true;
+}
 /**
  * init command
  */
@@ -40,7 +64,8 @@ function initCommand() {
           if (!mc.getPlayer(res.userName)) {
             const player = mc.spawnSimulatedPlayer(res.userName, _ori.pos);
             if (player) {
-              player.simulateLookAt(_ori.player.getBlockFromViewVector());
+              _ori.player.direction;
+              player.simulateLookAt(_ori.player?.getBlockFromViewVector()?.pos);
               return out.success(
                 `add"${res.userName}"on(${player.pos})success.`
               );
@@ -49,10 +74,15 @@ function initCommand() {
         }
         return out.error(`create failed.`);
       case "remove":
-        if (res.userName)
-          if (isFakePlayer(res.userName))
-            mc.getPlayer(res.userName).simulateDisconnect();
-        return out.success(`remove fake player"${res.userName}"success`);
+        if (res.userName) {
+          const player = mc.getPlayer(res.userName);
+          if (player && player.isSimulatedPlayer()) {
+            stopAction(player);
+            player.simulateDisconnect();
+            return out.success(`remove fake player"${res.userName}"success`);
+          }
+        }
+        return out.error(`[${res.userName}]不是假人或者不存在`);
       case "list":
         if (res.userName) {
           const player = mc.getPlayer(res.userName);
@@ -80,7 +110,7 @@ function initCommand() {
     "Fake Player Control",
     PermType.GameMasters
   );
-  cmp.setEnum("PlayerAction", ["attick", "stop", "drop"]);
+  cmp.setEnum("PlayerAction", ["attick", "stop", "drop", "here"]);
   cmp.setEnum("UseAction", ["use"]);
   cmp.mandatory("userName", ParamType.Player);
   cmp.mandatory("myItem", ParamType.RawText);
@@ -102,6 +132,8 @@ function initCommand() {
       case "drop":
         dropAction(res.userName[0]);
         return out.success("已全部扔出");
+      case "here":
+        res.userName[0]?.teleport(_ori.pos);
     }
     if (res.useAction == "use") {
       useAction(res.userName[0], `${res.myItem}`);
@@ -135,18 +167,12 @@ function initCommand() {
   fan.mandatory("FanAction", ParamType.Bool);
   fan.overload(["FanAction"]);
   fan.setCallback((_cmd, _ori, out, res) => {
-    const db = new KVDatabase("db");
-    const status = db.get("fan");
     switch (res.FanAction) {
       case true:
-        if (!status || status !== true) {
-          db.set("fan", true);
-        }
+        fanFlag = true;
         return out.success("开启成功");
       case false:
-        if (status && status !== false) {
-          db.set("fan", false);
-        }
+        fanFlag = false;
         return out.success("关闭成功");
     }
   });
@@ -176,8 +202,13 @@ function initCommand() {
   });
 }
 
-function setPlayerSidebar(name, title, data) {
-  const player = mc.getPlayer(`${name}`);
+/**
+ * 设置用户侧边栏
+ * @param {Player} player 用户对象
+ * @param {string} title 标题
+ * @param {object} data 显示内容:{k,v}
+ */
+function setPlayerSidebar(player, title, data) {
   if (player) {
     player.setSidebar(title, data);
   }
@@ -204,13 +235,19 @@ function clearAction() {
  */
 function showAction(pos) {
   logger.info("showAction:", pos);
+  const intPos = {
+    x: parseInt(pos.x),
+    y: parseInt(pos.y),
+    z: parseInt(pos.z),
+    dimid: pos.dimid,
+  };
   const db = new KVDatabase("db");
   const ps = mc.newParticleSpawner(4294967295, true, true);
   let id24 = setInterval(() => {
-    drawYuan(ps,pos, 24, 4, 1, 64, ParticleColor.Red);
+    drawYuan(ps, intPos, 24, 4, 1, 64, ParticleColor.Red);
   }, 2000);
   let id128 = setInterval(() => {
-    drawYuan(ps,pos, 128, 4, 1, 342, ParticleColor.Green);
+    drawYuan(ps, intPos, 128, 4, 1, 342, ParticleColor.Green);
   }, 2000);
   db.set("draw24", id24);
   db.set("draw128", id128);
@@ -219,29 +256,29 @@ function showAction(pos) {
 
 /**
  * 自动攻击
- * @param {String} userName 假人名称
+ * @param {String} player 假人对象
  */
-function attickAction(userName) {
+function attickAction(player) {
   const db = new KVDatabase("db");
-  let id = db.get(`${userName?.name}`);
+  let id = db.get(`${player?.name}`);
   if (id) {
     clearInterval(parseInt(id));
   }
   // const player = mc.getPlayer(`${userName}`);
-  logger.info("获取玩家:", userName);
-  if (userName) {
+  logger.info("获取玩家:", player);
+  if (player) {
     //获取背包物品
-    let item = findItem(userName, "剑");
+    let item = findItem(player, "剑");
     if (item) {
       //设置主手物品为剑
-      swapHand(userName, item);
+      swapHand(player, item);
       //开始攻击
     }
     id = setInterval(() => {
-      userName.simulateAttack();
+      player.simulateAttack();
     }, 1000);
-    db.set(`${userName.name}`, id);
-    userName.talkAs("开始攻击");
+    db.set(`${player.name}`, id);
+    player.talkAs("开始攻击");
   }
   db.close();
 }
@@ -259,15 +296,10 @@ function useAction(player, itemType = "") {
       player.simulateUseItem();
       player.talkAs(`使用:${player.getHand()?.name}`);
       if (itemType == "三叉戟") {
-        // player.simulateAttack();
-        // player.simulateStopUsingItem();
-
-        // player.simulateStopInteracting();
-        setTimeout(()=>{
-          // player.simulateStopDestroyingBlock();
-          // player.simulateStopMoving();
+        setTimeout(() => {
+          //因为三叉戟需要蓄力，所以等待1s
           player.simulateStopUsingItem();
-        },1000);
+        }, 1000);
         player.talkAs("吃我一戟吧！");
       }
     } else {
@@ -382,7 +414,11 @@ function stopAction(player) {
     player.simulateStopUsingItem();
     //停止攻击
     let id = db.get(`${player.name}`);
-    clearInterval(parseInt(id));
+    try {
+      clearInterval(parseInt(id));
+    } catch (error) {
+      logger.error(`[stopAction]error:`, error);
+    }
     db.delete(`${player.name}`);
     player.talkAs("已停止所有动作");
   }
@@ -404,37 +440,26 @@ function isFakePlayer(n) {
  * 绘制一个球体
  * @param {pos} center 球心坐标
  * @param {int} radio 半径
- * @param {int} length 忘记了
- * @param {int} minS 忘记了，最小间隔还是啥来着
- * @param {int} maxP 最大粒子数还是啥来着
+ * @param {int} lineWidth 线宽1,2,3,8,16
+ * @param {int} minS 圆点最小间隔
+ * @param {int} maxP 最大粒子数
  * @param {object} color 颜色
  */
-function drawYuan(ps,center, radio, length, minS, maxP, color) {
-  const b = new FloatPos(center.x, center.y - radio, center.z, center.dimid);
-
-  logger.info("drawYuan:", center, b);
-  ps.drawCircle(b, 0, 2, length, minS, maxP, color);
+function drawYuan(ps, center, radio, lineWidth, minS, maxP, color) {
+  const b = new IntPos(center.x, center.y - radio, center.z, center.dimid);
+  ps.drawCircle(b, 0, radio, lineWidth, minS, maxP, color);
 
   for (let i = 0; i < radio * 2; i++) {
-    if (i <= radio) {
-      ps.drawCircle(
-        new FloatPos(center.x, b.y + i, center.z, center.dimid),
-        0, i,
-        length,
-        minS,
-        maxP,
-        color
-      );
-    } else {
-      ps.drawCircle(
-        new FloatPos(center.x, b.y + i, center.z, center.dimid),
-        0,
-        (radio = 2 * radio - i),
-        length,
-        minS,
-        maxP,
-        color
-      );
-    }
+    const currentRadio = i <= radio ? i : 2 * radio - i; // 计算当前半径
+    const yPosition = b.y + i; // 计算当前y坐标
+    ps.drawCircle(
+      new IntPos(center.x, yPosition, center.z, center.dimid),
+      0,
+      currentRadio,
+      lineWidth,
+      minS,
+      maxP,
+      color
+    );
   }
 }
