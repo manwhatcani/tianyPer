@@ -23,7 +23,7 @@
 > 前置依赖
 > 
 > - [Levilamina](https://levilamina.liteldev.com/zh/install/)
-> - [LegacyScriptEngine](https://https://lse.liteldev.com/zh/)
+> - [LegacyScriptEngine](https://lse.liteldev.com/zh/)
 
 1. 按照【前置依赖】里的内容安装Levilamina以及LegacyScriptEngine
 2. 将tianyPer.js移动到安装路径的`plugins`文件夹下

@@ -1,3 +1,67 @@
+const DIRECTION = {
+  "minecraft:dropper": {
+    //投掷器
+    key: "facing_direction",
+    keyType: "INT",
+    direction: [0, 1, 2, 3, 4, 5],
+  },
+  "minecraft:dispenser": {
+    //发射器
+    key: "facing_direction",
+    keyType: "INT",
+    direction: [0, 1, 2, 3, 4, 5],
+  },
+  "minecraft:sticky_piston": {
+    //粘性活塞
+    key: "facing_direction",
+    keyType: "INT",
+    direction: [0, 1, 2, 3, 4, 5],
+  },
+  "minecraft:piston": {
+    //活塞
+    key: "facing_direction",
+    keyType: "INT",
+    direction: [0, 1, 2, 3, 4, 5],
+  },
+  "minecraft:observer": {
+    //观察者
+    key: "minecraft:facing_direction",
+    keyType: "STRING",
+    direction: ["east", "south", "west", "north", "down", "up"],
+  },
+  "minecraft:chest": {
+    //箱子
+    key: "minecraft:cardinal_direction",
+    keyType: "STRING",
+    direction: ["east", "south", "west", "north"],
+  },
+  "minecraft:crafter": {
+    //合成器
+    key: "orientation",
+    keyType: "STRING",
+    direction: [
+      "east_up",
+      "south_up",
+      "west_up",
+      "north_up",
+      "down_up",
+      "up_up",
+    ],
+  },
+  "minecraft:beehive": {
+    //蜂箱
+    key: "direction",
+    keyType: "INT",
+    direction: [0, 1, 2, 3],
+  },
+  "minecraft:hopper": {
+    //漏斗
+    key: "facing_direction",
+    keyType: "INT",
+    direction: [0, 2, 3, 4, 5],
+  },
+};
+
 mc.listen("onServerStarted", () => {
   initCommand();
 });
@@ -26,18 +90,66 @@ function debounce(func, wait) {
 }
 const debouncedItemCommand = debounce(itemCommand, 1000); // 1秒的防抖时间
 
-mc.listen("onUseItemOn", (player, item, block, side, pos) => {
+mc.listen("onAttackBlock", (player, block, item) => {
   if (fanFlag) {
-    debouncedItemCommand(player, item, block, side, pos);
+    itemCommand(player, block, item);
+    // debouncedItemCommand(player, block, item);
   }
 });
 
-function itemCommand(player, item, block, side, pos) {
-  if (item?.name.includes("cactus")) {
-    //TODO:没找到旋转的接口，要删除重建？
+function itemCommand(player, block, item) {
+  logger.info("item:", item.name);
+  if (item?.name.includes("Cactus")) {
+    const blkNbt = block.getNbt();
+    try {
+      //TODO:添加更多可旋转方块
+      //获取方向信息，NBT key,value
+      const direction = getDirectionKeyByName(blkNbt.getTag("name").toString());
+
+      if (!direction) {
+        return true;
+      }
+
+      //你也不想每次都随机旋转吧太太，既如此记录上次的就好了吧
+      const oldDirection = blkNbt.getTag("states").getTag(direction.key).get();
+
+      //使用索引的方式遍历方向数组
+      let index = direction.direction.indexOf(oldDirection);
+
+      //这是接下来要设定的方向
+      let data =
+        direction.direction[
+          index < direction.direction.length - 1 ? index + 1 : 0
+        ];
+
+      //直接设置值就行，因为类型已经在方向数组中写死
+      blkNbt.getTag("states").getTag(direction.key).set(data);
+
+      //挺好的，使我旋转
+      if (blkNbt) {
+        block.setNbt(blkNbt);
+      }
+    } catch (error) {
+      logger.error("出错了：", error);
+    }
   }
   return true;
 }
+
+/**
+ * 通过NBT名称读取不同方块的方向属性对应的键
+ * @param {string} name 方块的NBT名称
+ * @returns option:{key,keyType,direction}
+ */
+function getDirectionKeyByName(name) {
+  logger.info("[getDirectionKeyByName]:name:", name);
+  const option = DIRECTION[`${name}`];
+  logger.info("[getDirectionKeyByName]:option:", option);
+  if (option) {
+    return option;
+  }
+}
+
 /**
  * init command
  */
