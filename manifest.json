@@ -1,0 +1,12 @@
+{
+    "entry": "tianyPer.js",
+    "name": "tianyPer",
+    "type": "lse-quickjs",
+	"author": "tiany",
+    "version": "0.0.1",
+    "dependencies": [
+        {
+            "name": "legacy-script-engine-quickjs"
+        }
+    ]
+}

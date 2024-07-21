@@ -1,72 +1,81 @@
+// import { LOG, DIRECTION } from ('./lib/constant');//暂时不支持，很显然应该不是我的锅
+/**
+ * LOG DEFINED
+ */
+const LOG = {
+  SLIENT: 0,
+  FATAL: 1,
+  ERROR: 2,
+  WARN: 3,
+  INFO: 4,
+  DEBUG: 5
+};
+logger.setLogLevel(LOG.DEBUG);
+logger.setTitle('tianyPer');
+
+//方块方向
 const DIRECTION = {
-  "minecraft:dropper": {
+  'minecraft:dropper': {
     //投掷器
-    key: "facing_direction",
-    keyType: "INT",
-    direction: [0, 1, 2, 3, 4, 5],
+    key: 'facing_direction',
+    keyType: 'INT',
+    direction: [0, 1, 2, 3, 4, 5]
   },
-  "minecraft:dispenser": {
+  'minecraft:dispenser': {
     //发射器
-    key: "facing_direction",
-    keyType: "INT",
-    direction: [0, 1, 2, 3, 4, 5],
+    key: 'facing_direction',
+    keyType: 'INT',
+    direction: [0, 1, 2, 3, 4, 5]
   },
-  "minecraft:sticky_piston": {
+  'minecraft:sticky_piston': {
     //粘性活塞
-    key: "facing_direction",
-    keyType: "INT",
-    direction: [0, 1, 2, 3, 4, 5],
+    key: 'facing_direction',
+    keyType: 'INT',
+    direction: [0, 1, 2, 3, 4, 5]
   },
-  "minecraft:piston": {
+  'minecraft:piston': {
     //活塞
-    key: "facing_direction",
-    keyType: "INT",
-    direction: [0, 1, 2, 3, 4, 5],
+    key: 'facing_direction',
+    keyType: 'INT',
+    direction: [0, 1, 2, 3, 4, 5]
   },
-  "minecraft:observer": {
+  'minecraft:observer': {
     //观察者
-    key: "minecraft:facing_direction",
-    keyType: "STRING",
-    direction: ["east", "south", "west", "north", "down", "up"],
+    key: 'minecraft:facing_direction',
+    keyType: 'STRING',
+    direction: ['east', 'south', 'west', 'north', 'down', 'up']
   },
-  "minecraft:chest": {
+  'minecraft:chest': {
     //箱子
-    key: "minecraft:cardinal_direction",
-    keyType: "STRING",
-    direction: ["east", "south", "west", "north"],
+    key: 'minecraft:cardinal_direction',
+    keyType: 'STRING',
+    direction: ['east', 'south', 'west', 'north']
   },
-  "minecraft:crafter": {
+  'minecraft:crafter': {
     //合成器
-    key: "orientation",
-    keyType: "STRING",
-    direction: [
-      "east_up",
-      "south_up",
-      "west_up",
-      "north_up",
-      "down_up",
-      "up_up",
-    ],
+    key: 'orientation',
+    keyType: 'STRING',
+    direction: ['east_up', 'south_up', 'west_up', 'north_up', 'down_up', 'up_up']
   },
-  "minecraft:beehive": {
+  'minecraft:beehive': {
     //蜂箱
-    key: "direction",
-    keyType: "INT",
-    direction: [0, 1, 2, 3],
+    key: 'direction',
+    keyType: 'INT',
+    direction: [0, 1, 2, 3]
   },
-  "minecraft:hopper": {
+  'minecraft:hopper': {
     //漏斗
-    key: "facing_direction",
-    keyType: "INT",
-    direction: [0, 2, 3, 4, 5],
-  },
+    key: 'facing_direction',
+    keyType: 'INT',
+    direction: [0, 2, 3, 4, 5]
+  }
 };
 
-mc.listen("onServerStarted", () => {
+mc.listen('onServerStarted', () => {
   initCommand();
 });
 
-mc.listen("onPlayerDie", (player, source) => {
+mc.listen('onPlayerDie', (player, source) => {
   if (player.isSimulatedPlayer()) {
     player.simulateRespawn();
     const pos = player.getRespawnPosition(); //获取重生坐标
@@ -90,7 +99,7 @@ function debounce(func, wait) {
 }
 const debouncedItemCommand = debounce(itemCommand, 1000); // 1秒的防抖时间
 
-mc.listen("onAttackBlock", (player, block, item) => {
+mc.listen('onAttackBlock', (player, block, item) => {
   if (fanFlag) {
     itemCommand(player, block, item);
     // debouncedItemCommand(player, block, item);
@@ -98,40 +107,38 @@ mc.listen("onAttackBlock", (player, block, item) => {
 });
 
 function itemCommand(player, block, item) {
-  logger.info("item:", item.name);
-  if (item?.name.includes("Cactus")) {
+  // logger.info('[itemCommand]item:', item.name);
+  if (item?.name.includes('Cactus')) {
     const blkNbt = block.getNbt();
     try {
       //TODO:添加更多可旋转方块
       //获取方向信息，NBT key,value
-      const direction = getDirectionKeyByName(blkNbt.getTag("name").toString());
+      const direction = getDirectionKeyByName(blkNbt.getTag('name').toString());
 
       if (!direction) {
-        return true;
+        return false; //拦截
       }
 
       //你也不想每次都随机旋转吧太太，既如此记录上次的就好了吧
-      const oldDirection = blkNbt.getTag("states").getTag(direction.key).get();
+      const oldDirection = blkNbt.getTag('states').getTag(direction.key).get();
 
       //使用索引的方式遍历方向数组
       let index = direction.direction.indexOf(oldDirection);
 
       //这是接下来要设定的方向
-      let data =
-        direction.direction[
-          index < direction.direction.length - 1 ? index + 1 : 0
-        ];
+      let data = direction.direction[index < direction.direction.length - 1 ? index + 1 : 0];
 
       //直接设置值就行，因为类型已经在方向数组中写死
-      blkNbt.getTag("states").getTag(direction.key).set(data);
+      blkNbt.getTag('states').getTag(direction.key).set(data);
 
       //挺好的，使我旋转
       if (blkNbt) {
         block.setNbt(blkNbt);
       }
     } catch (error) {
-      logger.error("出错了：", error);
+      logger.error('出错了：', error);
     }
+    return false;
   }
   return true;
 }
@@ -142,9 +149,9 @@ function itemCommand(player, block, item) {
  * @returns option:{key,keyType,direction}
  */
 function getDirectionKeyByName(name) {
-  logger.info("[getDirectionKeyByName]:name:", name);
+  logger.info('[getDirectionKeyByName]:name:', name);
   const option = DIRECTION[`${name}`];
-  logger.info("[getDirectionKeyByName]:option:", option);
+  logger.info('[getDirectionKeyByName]:option:', option);
   if (option) {
     return option;
   }
@@ -155,37 +162,31 @@ function getDirectionKeyByName(name) {
  */
 function initCommand() {
   //fake player manager
-  const cmd = mc.newCommand(
-    "tianyfakerplayer",
-    "Fake Player Manager",
-    PermType.GameMasters
-  );
-  cmd.setAlias("tfp");
-  cmd.setEnum("ChangeAction", ["add", "remove"]);
-  cmd.setEnum("ListAction", ["list", "status"]);
-  cmd.mandatory("action", ParamType.Enum, "ChangeAction", 1);
-  cmd.mandatory("action", ParamType.Enum, "ListAction", 1);
-  cmd.mandatory("userName", ParamType.RawText);
-  cmd.overload(["ChangeAction", "userName"]);
-  cmd.overload(["ListAction", "userName"]);
+  const cmd = mc.newCommand('tianyfakerplayer', 'Fake Player Manager', PermType.GameMasters);
+  cmd.setAlias('tfp');
+  cmd.setEnum('ChangeAction', ['add', 'remove']);
+  cmd.setEnum('ListAction', ['list', 'status']);
+  cmd.mandatory('action', ParamType.Enum, 'ChangeAction', 1);
+  cmd.mandatory('action', ParamType.Enum, 'ListAction', 1);
+  cmd.mandatory('userName', ParamType.RawText);
+  cmd.overload(['ChangeAction', 'userName']);
+  cmd.overload(['ListAction', 'userName']);
   cmd.setCallback((_cmd, _ori, out, res) => {
-    logger.info("res:", res, " cmd:", _cmd, " _ori:", _ori.player);
+    logger.debug('res:', res, ' cmd:', _cmd, ' _ori:', _ori.player);
     switch (res.action) {
-      case "add":
+      case 'add':
         if (res.userName) {
           if (!mc.getPlayer(res.userName)) {
             const player = mc.spawnSimulatedPlayer(res.userName, _ori.pos);
             if (player) {
               _ori.player.direction;
               player.simulateLookAt(_ori.player?.getBlockFromViewVector()?.pos);
-              return out.success(
-                `add"${res.userName}"on(${player.pos})success.`
-              );
+              return out.success(`add"${res.userName}"on(${player.pos})success.`);
             }
           }
         }
         return out.error(`create failed.`);
-      case "remove":
+      case 'remove':
         if (res.userName) {
           const player = mc.getPlayer(res.userName);
           if (player && player.isSimulatedPlayer()) {
@@ -195,7 +196,7 @@ function initCommand() {
           }
         }
         return out.error(`[${res.userName}]不是假人或者不存在`);
-      case "list":
+      case 'list':
         if (res.userName) {
           const player = mc.getPlayer(res.userName);
           if (player) {
@@ -204,7 +205,7 @@ function initCommand() {
         } else {
           const ps = mc.getOnlinePlayers();
           const fps = [];
-          ps.forEach((p) => {
+          ps.forEach(p => {
             if (p.isSimulatedPlayer()) {
               fps.push(JSON.stringify(p));
             }
@@ -217,100 +218,92 @@ function initCommand() {
   cmd.setup();
 
   //faker player controller
-  const cmp = mc.newCommand(
-    "player",
-    "Fake Player Control",
-    PermType.GameMasters
-  );
-  cmp.setEnum("PlayerAction", ["attick", "stop", "drop", "here"]);
-  cmp.setEnum("UseAction", ["use"]);
-  cmp.mandatory("userName", ParamType.Player);
-  cmp.mandatory("myItem", ParamType.RawText);
-  cmp.mandatory("action", ParamType.Enum, "PlayerAction", 1);
-  cmp.mandatory("useAction", ParamType.Enum, "UseAction", 1);
-  cmp.overload(["userName", "action"]);
-  cmp.overload(["userName", "useAction", "myItem"]);
+  const cmp = mc.newCommand('player', 'Fake Player Control', PermType.GameMasters);
+  cmp.setEnum('PlayerAction', ['attick', 'stop', 'drop', 'here']);
+  cmp.setEnum('UseAction', ['use']);
+  cmp.mandatory('userName', ParamType.Player);
+  cmp.mandatory('myItem', ParamType.RawText);
+  cmp.mandatory('action', ParamType.Enum, 'PlayerAction', 1);
+  cmp.mandatory('useAction', ParamType.Enum, 'UseAction', 1);
+  cmp.overload(['userName', 'action']);
+  cmp.overload(['userName', 'useAction', 'myItem']);
   cmp.setCallback((_cmd, _ori, out, res) => {
-    logger.info("res:", res);
-    logger.info("res.userName:", res.userName);
-    logger.info("res.userName:", res.userName[0]);
+    logger.debug('res.userName:', res.userName[0]); //这个userName读到的是一个玩家对象数组
     switch (res.action) {
-      case "attick":
+      case 'attick':
         attickAction(res.userName[0]);
-        return out.success("attick 20gt/1t");
-      case "stop":
+        return out.success('attick');
+      case 'stop':
         stopAction(res.userName[0]);
-        return out.success("stop success");
-      case "drop":
+        return out.success('stop success');
+      case 'drop':
         dropAction(res.userName[0]);
-        return out.success("已全部扔出");
-      case "here":
+        return out.success('已全部扔出');
+      case 'here':
+        // logger.info('direction:', res.userName[0]?.direction?.toFacing());
         res.userName[0]?.teleport(_ori.pos);
+        return out.success('已传送');
     }
-    if (res.useAction == "use") {
+    if (res.useAction == 'use') {
       useAction(res.userName[0], `${res.myItem}`);
-      return out.success("use success");
+      return out.success('use success');
     }
   });
   cmp.setup();
 
   //show particle
-  const hsa = mc.newCommand("hsa", "draw scope", PermType.GameMasters);
-  hsa.setEnum("DrawAction", ["show", "stop"]);
-  hsa.mandatory("action", ParamType.Enum, "DrawAction", 1);
-  hsa.overload(["DrawAction"]);
+  const hsa = mc.newCommand('hsa', 'draw scope', PermType.GameMasters);
+  hsa.setEnum('DrawAction', ['show', 'stop']);
+  hsa.mandatory('action', ParamType.Enum, 'DrawAction', 1);
+  hsa.overload(['DrawAction']);
   hsa.setCallback((_cmd, _ori, out, res) => {
-    logger.info("res:", res);
+    logger.debug('res:', res);
     switch (res.action) {
-      case "show":
-        logger.info("111");
+      case 'show':
         clearAction();
         showAction(_ori.pos);
-        return out.success("hsa show");
-      case "stop":
+        return out.success('hsa show');
+      case 'stop':
         clearAction();
-        return out.success("hsa stop");
+        return out.success('hsa stop');
     }
   });
   hsa.setup();
 
   //仙人掌扳手
-  const fan = mc.newCommand("fan", "仙人掌扳手", PermType.GameMasters);
-  fan.mandatory("FanAction", ParamType.Bool);
-  fan.overload(["FanAction"]);
+  const fan = mc.newCommand('fan', '仙人掌扳手', PermType.GameMasters);
+  fan.mandatory('FanAction', ParamType.Bool);
+  fan.overload(['FanAction']);
   fan.setCallback((_cmd, _ori, out, res) => {
     switch (res.FanAction) {
       case true:
         fanFlag = true;
-        return out.success("开启成功");
+        return out.success('开启成功');
       case false:
         fanFlag = false;
-        return out.success("关闭成功");
+        return out.success('关闭成功');
     }
   });
   fan.setup();
 
   //结构群系UI
-  const structUi = mc.newCommand("ui", "显示群系", PermType.GameMasters);
-  structUi.mandatory("StructAction", ParamType.Bool);
-  structUi.overload(["StructAction"]);
+  const structUi = mc.newCommand('ui', '显示群系', PermType.GameMasters);
+  structUi.mandatory('StructAction', ParamType.Bool);
+  structUi.overload(['StructAction']);
   structUi.setCallback((_cmd, _ori, out, res) => {
-    const db = new KVDatabase("db");
+    const db = new KVDatabase('db');
     let id = 0;
     switch (res.StructAction) {
       case true:
-        id = setInterval(
-          _ori.setSidebar("Tiany UI", { 群系: `${_ori.getBiomeName()}` }),
-          1000
-        );
-        db.set("sidebar", id);
+        id = setInterval(_ori.setSidebar('Tiany UI', { 群系: `${_ori.getBiomeName()}` }), 1000);
+        db.set('sidebar', id);
       case false:
-        id = db.get("sidebar");
+        id = db.get('sidebar');
         clearInterval(parseInt(id));
-        db.delete("sidebar");
+        db.delete('sidebar');
     }
     db.close();
-    out.success("设置成功");
+    out.success('设置成功');
   });
 }
 
@@ -330,13 +323,13 @@ function setPlayerSidebar(player, title, data) {
  * 清除加载范围显示
  */
 function clearAction() {
-  const db = new KVDatabase("db");
-  let id24r = db.get("draw24");
-  let id128r = db.get("draw128");
+  const db = new KVDatabase('db');
+  let id24r = db.get('draw24');
+  let id128r = db.get('draw128');
   clearInterval(parseInt(id24r));
   clearInterval(parseInt(id128r));
-  db.delete("draw24");
-  db.delete("draw128");
+  db.delete('draw24');
+  db.delete('draw128');
   db.close();
 }
 
@@ -346,14 +339,14 @@ function clearAction() {
  * @param {object} pos 球心
  */
 function showAction(pos) {
-  logger.info("showAction:", pos);
+  logger.info('[showAction]pos:', pos);
   const intPos = {
     x: parseInt(pos.x),
     y: parseInt(pos.y),
     z: parseInt(pos.z),
-    dimid: pos.dimid,
+    dimid: pos.dimid
   };
-  const db = new KVDatabase("db");
+  const db = new KVDatabase('db');
   const ps = mc.newParticleSpawner(4294967295, true, true);
   let id24 = setInterval(() => {
     drawYuan(ps, intPos, 24, 4, 1, 64, ParticleColor.Red);
@@ -361,26 +354,26 @@ function showAction(pos) {
   let id128 = setInterval(() => {
     drawYuan(ps, intPos, 128, 4, 1, 342, ParticleColor.Green);
   }, 2000);
-  db.set("draw24", id24);
-  db.set("draw128", id128);
+  db.set('draw24', id24);
+  db.set('draw128', id128);
   db.close();
 }
 
 /**
  * 自动攻击
- * @param {String} player 假人对象
+ * @param {object} player 假人对象
  */
 function attickAction(player) {
-  const db = new KVDatabase("db");
-  let id = db.get(`${player?.name}`);
+  const db = new KVDatabase('db');
+  let id = db.get(`${player?.name}_attick`);
   if (id) {
     clearInterval(parseInt(id));
   }
   // const player = mc.getPlayer(`${userName}`);
-  logger.info("获取玩家:", player);
+  logger.info('[attickAction]获取玩家:', player);
   if (player) {
     //获取背包物品
-    let item = findItem(player, "剑");
+    let item = findItem(player, '剑');
     if (item) {
       //设置主手物品为剑
       swapHand(player, item);
@@ -389,8 +382,8 @@ function attickAction(player) {
     id = setInterval(() => {
       player.simulateAttack();
     }, 1000);
-    db.set(`${player.name}`, id);
-    player.talkAs("开始攻击");
+    db.set(`${player.name}_attick`, id);
+    player.talkAs('开始攻击');
   }
   db.close();
 }
@@ -399,7 +392,7 @@ function attickAction(player) {
  * @param {string} player 假人名称
  * @param {object} item 使用物品
  */
-function useAction(player, itemType = "") {
+function useAction(player, itemType = '') {
   logger.info(`[useAction](${player?.name})准备使用:${itemType}`);
   if (player) {
     const item = findItem(player, itemType);
@@ -407,19 +400,42 @@ function useAction(player, itemType = "") {
       swapHand(player, item);
       player.simulateUseItem();
       player.talkAs(`使用:${player.getHand()?.name}`);
-      if (itemType == "三叉戟") {
+      if (itemType == '三叉戟') {
         setTimeout(() => {
           //因为三叉戟需要蓄力，所以等待1s
           player.simulateStopUsingItem();
         }, 1000);
-        player.talkAs("吃我一戟吧！");
+        player.talkAs('吃我一戟吧！');
+      } else if (itemType.includes('镐')) {
+        destoryAction(player);
       }
     } else {
       player.talkAs(`啥也没找到`);
     }
   } else {
-    logger.error("用户不存在");
+    logger.error('用户不存在');
   }
+}
+
+/**
+ * 模拟破坏方块
+ * @param {Object} player 假人对象
+ */
+function destoryAction(player) {
+  const db = new KVDatabase('db');
+  let id = db.get(`${player?.name}_destory`);
+  if (id) {
+    clearInterval(parseInt(id));
+  }
+
+  if (player) {
+    id = setInterval(() => {
+      player.simulateDestroy();
+    }, 1000);
+    db.set(`${player.name}_destory`, id);
+    player.talkAs('开挖');
+  }
+  db.close();
 }
 
 /**
@@ -431,12 +447,8 @@ function swapHand(player, item) {
   logger.info(`[swapHand](${player?.name})swap item:${item.name}`);
   if (player && item) {
     const tmp = item.clone();
-    const handInBackpak = player.getInventory()?.getAllItems()[
-      findBackpack(player, player.getHand())
-    ];
-    const itemInBackpak = player.getInventory()?.getAllItems()[
-      findBackpack(player, item)
-    ];
+    const handInBackpak = player.getInventory()?.getAllItems()[findBackpack(player, player.getHand())];
+    const itemInBackpak = player.getInventory()?.getAllItems()[findBackpack(player, item)];
     const cloneHand = handInBackpak.clone();
     player.getHand().set(tmp);
     itemInBackpak.set(cloneHand);
@@ -453,7 +465,7 @@ function findBackpack(player, item) {
   if (player) {
     const items = player.getInventory()?.getAllItems();
     if (items) {
-      return items.findIndex((i) => i.id == item.id);
+      return items.findIndex(i => i.id == item.id);
     }
   }
   return -1;
@@ -464,23 +476,23 @@ function findBackpack(player, item) {
  * @param {Player} player 用户对象
  * @param {string} itemTypee 查找物品的标准类型
  */
-function findItem(player, itemType = "") {
+function findItem(player, itemType = '') {
   logger.info(`[findItem]开始从用户(${player?.name})查找(${itemType})`);
   if (player) {
     const keyValues = {
-      剑: "sword",
-      镐: "pickaxe",
-      三叉戟: "trident",
+      剑: 'sword',
+      镐: 'pickaxe',
+      三叉戟: 'trident'
     };
     const items = player.getInventory()?.getAllItems();
     return items[
-      items.findIndex((i) => {
+      items.findIndex(i => {
         const values = keyValues[`${itemType}`]
           ? [keyValues[`${itemType}`]]
           : itemType
           ? [itemType]
           : Object.values(keyValues);
-        return values.some((sub) => i.type.includes(sub));
+        return values.some(sub => i.type.includes(sub));
       })
     ];
   } else {
@@ -495,20 +507,35 @@ function findItem(player, itemType = "") {
 function dropAction(player) {
   logger.info(`[dropAction]player:${player?.name}`);
   if (player) {
+    const direction = `${player.direction?.toFacing()}`;
     const items = player.getInventory()?.getAllItems();
-    items.forEach((item) => {
+    let x = player.pos.x,
+      y = player.pos.y - 2,
+      z = player.pos.z,
+      dimid = player.pos.dimid;
+    switch (direction) {
+      case '0':
+        z = z + 2;
+        break;
+      case '1':
+        x = x - 2;
+        break;
+      case '2':
+        z = z - 2;
+        break;
+      case '3':
+        x = x + 2;
+        break;
+      default:
+        break;
+    }
+    items.forEach(item => {
       if (!item.isNull()) {
-        mc.spawnItem(
-          item,
-          player.pos.x + 5,
-          player.pos.y,
-          player.pos.z,
-          player.pos.dimid
-        );
+        mc.spawnItem(item, x, y, z, dimid);
         item.setNull();
       }
     });
-    logger.info("drop all");
+    logger.info('[dropAction]drop all');
   }
 }
 /**
@@ -516,7 +543,7 @@ function dropAction(player) {
  * @param {String} userName 假人名称
  */
 function stopAction(player) {
-  const db = new KVDatabase("db");
+  const db = new KVDatabase('db');
   // const userName = mc.getPlayer(`${userName}`);
   if (player) {
     //停止其他动作
@@ -524,15 +551,31 @@ function stopAction(player) {
     player.simulateStopInteracting();
     player.simulateStopMoving();
     player.simulateStopUsingItem();
-    //停止攻击
-    let id = db.get(`${player.name}`);
+
+    //停止动作
+    const actions = ['_attick', '_destory'];
+    const ids = [];
     try {
-      clearInterval(parseInt(id));
+      //遍历动作，停止所有动作
+      actions.forEach(action => {
+        let id = db.get(`${player.name}` + action);
+        if (id) {
+          ids.push(id);
+        }
+      });
+    } catch (error) {
+      logger.error('[stopAction]:查询动作状态失败', error);
+    }
+
+    try {
+      for (let index = 0; index < ids.length; index++) {
+        clearInterval(parseInt(ids[index]));
+      }
     } catch (error) {
       logger.error(`[stopAction]error:`, error);
     }
     db.delete(`${player.name}`);
-    player.talkAs("已停止所有动作");
+    player.talkAs('已停止所有动作');
   }
   db.close();
 }
